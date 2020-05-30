@@ -1,12 +1,16 @@
 #include "M5Atom.h"
 #include "LEDBuffer.h"
 
-// #define DURATION_MS       (25 * 200)  // (debug)5sec
-// #define DURATION_MS       (120 * 1000) // (debug)120sec
+#define DEBUGx
+
+#ifdef DEBUG
+#define DURATION_MS       (25 * 200)  // (debug)5sec
+#else
 #define DURATION_MS       (25 * 60 * 1000) // 25min
+#endif
 
 #define IDLE_INTERVAL_MS     300
-#define TIMEOVER_INTERVAL_MS 300
+#define TIMEOVER_INTERVAL_MS 500
 #define COUNT_INTERVAL_MS    100
 
 #define ARRAY_LEN(array) (sizeof(array) / sizeof(array[0]))
@@ -27,6 +31,7 @@ class PomoController {
             return (this->start_ms == 0) ? false : true;
         }
         unsigned long start_ms = 0;
+        uint8_t disp_line=0;
 
     private:
         PM_ST_N stat_ = PM_ST_IDLE;
@@ -36,32 +41,53 @@ class PomoController {
 LEDBuffer      m_ledbuf;
 PomoController m_pomocon;
 
-uint8_t m_tomato_matrix[] = {
-    0x00,0x00,0x00, 0xff,0x00,0x00, 0xff,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00,
-    0xff,0x00,0x00, 0xff,0x00,0x00, 0xff,0x00,0x00, 0xff,0x00,0x00, 0x00,0x00,0x00,
-    0xff,0x00,0x00, 0xff,0x00,0x00, 0xff,0x00,0x00, 0x00,0xff,0x00, 0x00,0xff,0x00,
-    0xff,0x00,0x00, 0xff,0x00,0x00, 0xff,0x00,0x00, 0xff,0x00,0x00, 0x00,0x00,0x00,
-    0x00,0x00,0x00, 0xff,0x00,0x00, 0xff,0x00,0x00, 0x00,0x00,0x00, 0x00,0x00,0x00
+#define R_RGB 0xff0000
+#define G_RGB 0x00ff00
+#define TOMATO_PATTERN 4
+
+uint32_t m_tomato_matrix[TOMATO_PATTERN][LED_HEIGHT*LED_WIDTH] = {
+    {
+        0,     R_RGB, R_RGB, 0,     0,
+        R_RGB, R_RGB, R_RGB, R_RGB, 0,
+        R_RGB, R_RGB, R_RGB, 0,     0,
+        R_RGB, R_RGB, R_RGB, R_RGB, 0,
+        0,     R_RGB, R_RGB, 0,     0
+    },
+    {
+        0,     R_RGB, R_RGB, 0,     0,
+        R_RGB, R_RGB, R_RGB, R_RGB, 0,
+        R_RGB, R_RGB, R_RGB, G_RGB, 0,
+        R_RGB, R_RGB, R_RGB, R_RGB, 0,
+        0,     R_RGB, R_RGB, 0,     0
+    },
+    {
+        0,     R_RGB, R_RGB, 0,     0,
+        R_RGB, R_RGB, R_RGB, R_RGB, 0,
+        R_RGB, R_RGB, R_RGB, G_RGB, G_RGB,
+        R_RGB, R_RGB, R_RGB, R_RGB, 0,
+        0,     R_RGB, R_RGB, 0,     0
+    },
+    {
+        0,     R_RGB, R_RGB, 0,     0,
+        R_RGB, R_RGB, R_RGB, R_RGB, 0,
+        R_RGB, R_RGB, R_RGB, G_RGB, 0,
+        R_RGB, R_RGB, R_RGB, R_RGB, G_RGB,
+        0,     R_RGB, R_RGB, 0,     0
+    },
 };
 
 void displayTimeover()
 {
-    static uint8_t line_m = 0;
-
     m_ledbuf.clear();
-    for (int h=0; h<line_m; h++) {
+    for (int h=0; h<LED_HEIGHT; h++) {
         for (int w=0; w<LED_WIDTH; w++) {
-            uint8_t pt = w*LED_WIDTH*3 + h*3;
-            m_ledbuf.set(m_tomato_matrix[pt], m_tomato_matrix[pt+1], m_tomato_matrix[pt+2], pt/3);
-            if (h+1 == line_m) { // while drawing last line, display every time.
-                m_ledbuf.display();
-                delay(100);
-            }
+            uint8_t pt = w*LED_WIDTH + h;
+            m_ledbuf.set(m_tomato_matrix[m_pomocon.disp_line][pt], pt);
         }
     }
 
     m_ledbuf.display();
-    line_m = (line_m+1) % 6;
+    m_pomocon.disp_line = (m_pomocon.disp_line+1) % TOMATO_PATTERN;
 }
 
 void toggleLEDPos(uint8_t pos)
@@ -147,6 +173,7 @@ void loop()
     pos = (diff_ms * LED_MAX) / DURATION_MS;
     if (pos >= LED_MAX) {
         m_pomocon.setStat(PM_ST_TIMEOVER);
+        m_pomocon.disp_line = 0;
         return;
     }
 
@@ -159,8 +186,8 @@ void loop()
         }
     }
     
-    m_ledbuf.fill(0x00, 0x00, 0x00, 0, pos);
-    m_ledbuf.fill(0xff, 0x00, 0x00, pos, LED_MAX);
+    m_ledbuf.fill(0, 0, pos);
+    m_ledbuf.fill(0xff0000, pos, LED_MAX);
     toggleLEDPos(pos);
     m_ledbuf.display();
 

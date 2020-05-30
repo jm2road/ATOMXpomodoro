@@ -16,8 +16,11 @@
 class LEDBuffer {
   public:
     void fillAll(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata);
+    void fillAll(uint32_t RGBdata);
     void fill(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata, uint8_t start_pos, uint8_t end_pos);
+    void fill(uint32_t RGBdata, uint8_t start_pos, uint8_t end_pos);
     void set(uint8_t Rdata, uint8_t Gdata, uint8_t Bdata, uint8_t pos);
+    void set(uint32_t RGBdata, uint8_t pos);
     void clear(void);
     void display(void);
 
